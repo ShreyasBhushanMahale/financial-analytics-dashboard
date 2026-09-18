@@ -14,10 +14,11 @@ Partial submissions are accepted, so core features must be finished and solid be
 ## Stack (fixed)
 
 - **client/**: React + TypeScript (Vite), MUI, Recharts, TanStack Query, React Router, axios
-- **server/**: Node 20+, Express + TypeScript, Mongoose, zod, jsonwebtoken, bcryptjs, csv-stringify, helmet, cors, express-rate-limit
+- **server/**: Node 20.19+ with tsx (runs the TypeScript in dev and the seed script), Express + TypeScript, Mongoose, zod, jsonwebtoken, bcryptjs, csv-stringify, helmet, cors, express-rate-limit
+- **Root**: npm workspaces; `concurrently` runs client and server together
 - **Database**: MongoDB Atlas (free tier), connected through `MONGODB_URI` in `server/.env`. No Docker. The app must work with any MongoDB URI, local or Atlas.
 - **Dev machine**: Windows + PowerShell. npm scripts must work on Windows (no bash-only commands like `rm -rf`).
-- **Tests**: Vitest + Supertest on the server; Vitest + React Testing Library for key client pieces
+- **Tests**: Vitest + Supertest on the server, with integration tests on `mongodb-memory-server` (fallback: `MONGODB_TEST_URI` pointing at a `finance_dashboard_test` database); Vitest + React Testing Library for two client tests only
 
 Don't add dependencies outside this list without asking me first.
 
@@ -81,10 +82,11 @@ What follows from this:
 
 ## Commands
 
-<!-- Fill in after Phase 1 -->
+All commands run from the repo root.
 
-- Install:
-- Start MongoDB:
-- Seed:
-- Dev (client + server):
-- Lint / typecheck / test:
+- Install: `npm install` (both workspaces; the first run also downloads a MongoDB binary for tests)
+- Start MongoDB: nothing to start. Set `MONGODB_URI` in `server/.env` (Atlas or local). Tests use an in-memory MongoDB.
+- Seed: added in Phase 2
+- Dev (client + server): `npm run dev` (client on :5173, API on :4000, `/api` proxied)
+- Lint / typecheck / test: `npm run lint` · `npm run typecheck` · `npm test`
+- Format: `npm run format` (check only: `npm run format:check`)
