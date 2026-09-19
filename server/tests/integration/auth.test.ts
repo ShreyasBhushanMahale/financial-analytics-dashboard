@@ -114,25 +114,31 @@ describe('POST /api/auth/login', () => {
     ]);
   });
 
-  it('blocks the 11th failed attempt, not counting successful logins', async () => {
-    // A fresh app, so this test's attempts don't share counters with the others.
-    const limitedApp = createApp();
-    const wrong = { ...credentials, password: 'wrong-password' };
+  // Eleven real bcrypt checks at production cost (~250 ms each) can exceed the default 5 s timeout
+  // on a busy machine, so this test gets more room.
+  it(
+    'blocks the 11th failed attempt, not counting successful logins',
+    { timeout: 20_000 },
+    async () => {
+      // A fresh app, so this test's attempts don't share counters with the others.
+      const limitedApp = createApp();
+      const wrong = { ...credentials, password: 'wrong-password' };
 
-    for (let attempt = 1; attempt <= 9; attempt++) {
+      for (let attempt = 1; attempt <= 9; attempt++) {
+        expect((await login(wrong, limitedApp)).status).toBe(401);
+      }
+      expect((await login(credentials, limitedApp)).status).toBe(200);
       expect((await login(wrong, limitedApp)).status).toBe(401);
-    }
-    expect((await login(credentials, limitedApp)).status).toBe(200);
-    expect((await login(wrong, limitedApp)).status).toBe(401);
 
-    const blocked = await login(credentials, limitedApp);
-    expect(blocked.status).toBe(429);
-    const { error } = blocked.body as ErrorBody;
-    expect(error.code).toBe('RATE_LIMITED');
-    const { retryAfterSeconds } = error.details as { retryAfterSeconds: number };
-    expect(retryAfterSeconds).toBeGreaterThan(0);
-    expect(retryAfterSeconds).toBeLessThanOrEqual(15 * 60);
-  });
+      const blocked = await login(credentials, limitedApp);
+      expect(blocked.status).toBe(429);
+      const { error } = blocked.body as ErrorBody;
+      expect(error.code).toBe('RATE_LIMITED');
+      const { retryAfterSeconds } = error.details as { retryAfterSeconds: number };
+      expect(retryAfterSeconds).toBeGreaterThan(0);
+      expect(retryAfterSeconds).toBeLessThanOrEqual(15 * 60);
+    },
+  );
 });
 
 describe('GET /api/auth/me', () => {

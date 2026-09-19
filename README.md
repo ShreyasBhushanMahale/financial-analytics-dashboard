@@ -6,20 +6,23 @@ This is a hiring assignment. The brief is in `docs/assignment.pdf`, the build pl
 
 ## Status
 
-| Phase                                                                  | State   |
-| ---------------------------------------------------------------------- | ------- |
-| 1. Scaffold: workspaces, tooling, Express app, health check, tests     | Done    |
-| 2. Models, indexes and seed script                                     | Done    |
-| 3. Auth (JWT)                                                          | Done    |
-| 4. Transactions API (filter, search, sort, paginate)                   | Done    |
-| 5. Analytics API                                                       | Done    |
-| 6. CSV export API                                                      | Done    |
-| 7–10. Frontend: foundation, dashboard, table and filters, export modal | Pending |
-| 11. Final pass                                                         | Pending |
+| Phase                                                               | State   |
+| ------------------------------------------------------------------- | ------- |
+| 1. Scaffold: workspaces, tooling, Express app, health check, tests  | Done    |
+| 2. Models, indexes and seed script                                  | Done    |
+| 3. Auth (JWT)                                                       | Done    |
+| 4. Transactions API (filter, search, sort, paginate)                | Done    |
+| 5. Analytics API                                                    | Done    |
+| 6. CSV export API                                                   | Done    |
+| 7. Frontend foundation: theme, login, app shell, error chips        | Done    |
+| 8. Dashboard: cards, overview chart, breakdown, latest transactions | Done    |
+| 9. Transactions table, filters and search                           | Pending |
+| 10. CSV export modal                                                | Pending |
+| 11. Final pass                                                      | Pending |
 
 ## Tech stack
 
-- **client/**: React 19, TypeScript, Vite. MUI, Recharts, TanStack Query, React Router and axios arrive in Phase 7.
+- **client/**: React 19, TypeScript, Vite, MUI, Recharts, TanStack Query, React Router, axios.
 - **server/**: Node, Express 5, TypeScript, Mongoose, zod, jsonwebtoken, bcryptjs, express-rate-limit, csv-stringify, helmet, cors.
 - **Database**: MongoDB 5.0 or later (Atlas free tier or local).
 - **Tests**: Vitest and Supertest, against an in-memory MongoDB.
@@ -54,17 +57,17 @@ Open http://localhost:5173. To check that the API can reach the database, open h
 
 Run these from the repo root.
 
-| Command                   | What it does                                                                                                                         |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run dev`             | API with auto-restart (tsx watch) and the Vite client, side by side                                                                  |
-| `npm run seed`            | Loads `server/data/transactions.json` and the demo user. Safe to repeat; see [Seeding](#seeding)                                     |
-| `npm run seed -- --reset` | Deletes all transactions first, then seeds. Users are kept                                                                           |
-| `npm run build`           | Compiles the server to `server/dist` and bundles the client                                                                          |
-| `npm run lint`            | ESLint (type-aware rules) in both workspaces                                                                                         |
-| `npm run typecheck`       | `tsc` in both workspaces                                                                                                             |
-| `npm test`                | Server test suite (unit and integration). **The first run downloads MongoDB for the tests (about 780 MB, one time, a few minutes).** |
-| `npm run format`          | Formats the repo with Prettier                                                                                                       |
-| `npm run format:check`    | Fails if any file isn't formatted                                                                                                    |
+| Command                   | What it does                                                                                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`             | API with auto-restart (tsx watch) and the Vite client, side by side                                                                                       |
+| `npm run seed`            | Loads `server/data/transactions.json` and the demo user. Safe to repeat; see [Seeding](#seeding)                                                          |
+| `npm run seed -- --reset` | Deletes all transactions first, then seeds. Users are kept                                                                                                |
+| `npm run build`           | Compiles the server to `server/dist` and bundles the client                                                                                               |
+| `npm run lint`            | ESLint (type-aware rules) in both workspaces                                                                                                              |
+| `npm run typecheck`       | `tsc` in both workspaces                                                                                                                                  |
+| `npm test`                | Server tests (unit and integration), then client tests. **The first run downloads MongoDB for the server tests (about 780 MB, one time, a few minutes).** |
+| `npm run format`          | Formats the repo with Prettier                                                                                                                            |
+| `npm run format:check`    | Fails if any file isn't formatted                                                                                                                         |
 
 ## Environment variables (`server/.env`)
 
@@ -225,10 +228,56 @@ server/
     setup/           in-memory MongoDB, "_test" database guard
     unit/  integration/
 client/
-  src/               React app (placeholder until Phase 7)
+  src/
+    api/             axios instance (token + 401 interceptors), error normalising, React Query client
+    auth/            session storage
+    providers/       Alert, Query and Auth providers (+ their contexts)
+    hooks/           useTransactionFilters (URL state), data hooks (useSummary, useMonthlyTrend, useRecentTransactions), useAuth, useAlerts
+    layout/          AppLayout, Sidebar, TopBar, UserMenu, ProtectedRoute
+    pages/           Login, Dashboard, Transactions, NotFound
+    config/          locale and currency (the one place they are set)
+    components/      common/ (states, pills, cards), charts/, dashboard/, auth/
+    theme/           design tokens and the MUI theme
+    test/            test setup and the client tests
   vite.config.ts     proxies /api to the server in development
 docs/                plan, API reference, brief
 ```
+
+## Frontend
+
+Signing in takes you to the dashboard. Every other page requires a session; without one, you're sent to the login page and brought back to where you were headed afterwards.
+
+- **Theme:** the colours are sampled from the design's colour styles (the screenshots carry no hex values). They live in [client/src/theme/tokens.ts](client/src/theme/tokens.ts), and components read them only through the MUI theme.
+  - Dark surfaces.
+  - Green primary.
+  - Yellow for expenses and pending.
+  - Orange for errors.
+  - Poppins as the typeface.
+- **Error chips:** every API error appears as an alert chip in the top-right corner, from one place. TanStack Query's global `onError` hands each failed request (after retries) to the `AlertProvider`. Components never display API errors themselves. When several requests fail for the same reason (the API is down, the session has expired), you see one chip, not five.
+- **Sessions:** the token is kept in `localStorage`, so it survives a reload. The trade-off is that any script running on the page could read it; the server's CSP and the 8-hour expiry limit that.
+  - Expired tokens are dropped before they're ever sent.
+  - Any 401 from the API clears the session, and the route guard redirects to the login page. A wrong password on the login form is the one 401 that doesn't do this.
+  - If the API can't be reached while checking a saved session, you get a "Try again" screen instead of being logged out.
+- **Avatars** are initials on a tinted square, with the colour derived from the name. The data's `user_profile` URL is never loaded: that site returns a different random face on every request.
+- **Sidebar:** Dashboard and Transactions are live. The design's other items (Wallet, Analytics, Personal, Message, Setting) are shown disabled with a "Coming soon" tooltip rather than as empty pages. Below the `md` breakpoint the sidebar shrinks to icons only.
+- **Filters live in the URL.** `useTransactionFilters()` reads and writes them in the query string, using the same parameter names as the API. The address bar and the API request are therefore always the same filter.
+  - The cards, the overview chart, the breakdowns and (from Phase 9) the table all read from this one hook, so they always describe the same transactions.
+  - A filtered view can be bookmarked or shared, and Back undoes a filter change.
+  - Try `/?statuses=Pending` or `/?categories=Expense&dateFrom=2024-07-01`.
+- **Dashboard:**
+  - **Cards:** Balance (revenue minus expenses), Revenue, Expenses and Pending. The design's fourth card is "Savings", but there is no savings data, so it shows the pending total instead.
+  - **Overview:** a monthly revenue (green) vs expenses (yellow) chart.
+  - **Breakdowns:** by category (a donut with each side's share) and by status (paid and pending, each split into revenue and expenses).
+  - **Latest transactions:** the 5 most recent overall. It is labelled as unaffected by filters, because it's a feed.
+  - **Filtered notice:** when a filter is active, a notice above the cards says so, with how many transactions match and a Clear button.
+- **Money and dates** are formatted with `Intl`, from one config file ([client/src/config/locale.ts](client/src/config/locale.ts): `en-US`, `USD`). Dates are shown in UTC, matching how the server filters and groups them.
+- **Loading, empty and error states:** every block has all three.
+  - First load: skeletons shaped like the content.
+  - Changing filters: the previous numbers stay visible, dimmed, instead of flashing back to skeletons.
+  - No match: an empty state with a Clear filters button.
+  - Failure: an error block with Try again, alongside the global error chip.
+- **Bundle size:** the production client is currently one 1.06 MB JavaScript file (323 KB gzipped). Splitting it per route, so the charts load only with the dashboard, is the next step.
+- **API location:** the client calls `/api`, which Vite proxies to port 4000 in development. For a deployed build, set `VITE_API_BASE_URL` at build time.
 
 ## Error format
 
@@ -246,11 +295,13 @@ Validation errors add a `details` array of `{ path, message }`. Unexpected error
 
 **The first `npm test` downloads a MongoDB binary** (about 780 MB on Windows, a few minutes). It is cached in `node_modules/.cache/mongodb-memory-server`, so later runs start in about a second. `npm install` never downloads it: only people who run the tests pay that cost.
 
+The client has two deliberately focused tests, run with Vitest, jsdom and React Testing Library. The first checks that an API error, from the network layer through React Query, reaches the user as an alert chip with the server's message. The second (Phase 10) checks that Export is disabled when no columns are selected.
+
 ## Technical decisions
 
 - **Express 5.** Errors thrown in route handlers, including async ones, reach the error handler without wrapper functions.
 - **TypeScript 6.0, not 7.** typescript-eslint, which provides the type-aware lint rules, supports TypeScript only up to 6.0.
-- **Vitest 4 and concurrently 9.** Their newer majors dropped Node 20, which the project still supports.
+- **Older majors for Node 20 support:** Vitest 4, concurrently 9, React Router 7, jsdom 27 and jest-dom 6.9. Their newer majors all require Node 22.
 - **`mongodb-memory-server-core`, not `mongodb-memory-server`.** It's the same library without the install hook. That keeps `npm install` fast and moves the MongoDB download to the first test run.
 - **No dotenv.** Node's built-in `--env-file` flag loads `server/.env`, and `tsx watch` passes it through.
 - **ESM throughout.** The server uses `"type": "module"` with `NodeNext` resolution, so relative imports end in `.js`.
