@@ -5,6 +5,7 @@ import { useFilterOptions, useTransactions } from '../../hooks/useTransactions';
 import { useTransactionFilters } from '../../hooks/useTransactionFilters';
 import { formatCount } from '../../utils/format';
 import { SectionCard } from '../common/SectionCard';
+import { ExportButton } from '../export/ExportButton';
 import { ActiveFilterChips } from './ActiveFilterChips';
 import { DateRangeButton } from './DateRangeButton';
 import { FiltersButton } from './FiltersButton';
@@ -52,6 +53,12 @@ export function TransactionsPanel() {
             onApply={setFilters}
           />
           <FiltersButton filters={filters} options={filterOptions.data} onChange={setFilters} />
+          <ExportButton
+            filters={filters}
+            hasFilters={activeFilterCount > 0}
+            sortBy={table.sortBy}
+            sortOrder={table.sortOrder}
+          />
         </Stack>
       }
     >

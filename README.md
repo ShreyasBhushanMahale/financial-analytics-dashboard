@@ -17,7 +17,7 @@ This is a hiring assignment. The brief is in `docs/assignment.pdf`, the build pl
 | 7. Frontend foundation: theme, login, app shell, error chips        | Done    |
 | 8. Dashboard: cards, overview chart, breakdown, latest transactions | Done    |
 | 9. Transactions table, filters and search                           | Done    |
-| 10. CSV export modal                                                | Pending |
+| 10. CSV export modal                                                | Done    |
 | 11. Final pass                                                      | Pending |
 
 ## Tech stack
@@ -236,7 +236,7 @@ client/
     layout/          AppLayout, Sidebar, TopBar, UserMenu, ProtectedRoute
     pages/           Login, Dashboard, Transactions, NotFound
     config/          locale and currency (the one place they are set)
-    components/      common/ (states, pills, chips, cards), charts/, dashboard/, transactions/, auth/
+    components/      common/ (states, pills, chips, cards), charts/, dashboard/, transactions/, export/, auth/
     theme/           design tokens and the MUI theme
     test/            test setup and the client tests
   vite.config.ts     proxies /api to the server in development
@@ -279,6 +279,14 @@ Signing in takes you to the dashboard. Every other page requires a session; with
   - **Chips:** every applied filter shows as a removable chip, one per value, with Clear all.
   - **Paging:** changing any filter, the sort or the page size goes back to page 1. Page, size and sort also live in the URL, so a shared link opens on the same page.
   - **States:** while the next page loads, the current one stays visible, dimmed. The first load shows skeleton rows. There are empty states for "nothing matches" (with Clear filters) and for a page past the end.
+- **CSV export** (the Export CSV button above the table):
+  - **Columns:** checkboxes from `/api/transactions/export/columns` (the server's whitelist), with Select all and None. The file keeps the whitelist's column order. The last choice is remembered in `localStorage`.
+  - **Rows:** "Current filters (N rows)" or "All transactions (300)", with real counts.
+  - **Preview:** the first 3 rows of the chosen scope, in the table's sort, formatted exactly as the CSV will be (ISO dates, 2-decimal amounts).
+  - **Export button:** disabled, with the reason shown, when no columns are chosen or there are no rows. It shows "Exporting…" while the file streams.
+  - **On success:** the file downloads as a blob under the server's `Content-Disposition` filename, the dialog closes, and a success chip appears.
+  - **On failure:** the Blob error body is read back into JSON, so the chip shows the server's own message, and the dialog stays open.
+  - **Keyboard:** fully usable from the keyboard (focus is trapped inside, Escape closes), and focus returns to Export CSV afterwards.
 - **Money and dates** are formatted with `Intl`, from one config file ([client/src/config/locale.ts](client/src/config/locale.ts): `en-US`, `USD`). Dates are shown in UTC, matching how the server filters and groups them.
 - **Loading, empty and error states:** every block has all three.
   - First load: skeletons shaped like the content.

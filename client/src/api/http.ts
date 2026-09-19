@@ -26,7 +26,31 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
-http.interceptors.response.use(undefined, (error: unknown) => {
+// FileReader rather than Blob.text(): it works in every browser the app supports and in jsdom.
+function blobToText(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+    reader.onerror = () => reject(reader.error ?? new Error('Could not read the response'));
+    reader.readAsText(blob);
+  });
+}
+
+/**
+ * Requests made with `responseType: 'blob'` (the CSV export) receive their JSON error body as a
+ * Blob too. Reading it back into JSON means the user sees the server's actual message.
+ */
+async function readBlobErrorBody(error: unknown): Promise<void> {
+  if (!axios.isAxiosError(error) || !(error.response?.data instanceof Blob)) return;
+  try {
+    error.response.data = JSON.parse(await blobToText(error.response.data)) as unknown;
+  } catch {
+    // Not JSON (a proxy error page, say): toApiError falls back to a generic message.
+  }
+}
+
+http.interceptors.response.use(undefined, async (error: unknown) => {
+  await readBlobErrorBody(error);
   const apiError = toApiError(error);
   // A 401 from the login form means wrong credentials, not an expired session.
   const isLogin = axios.isAxiosError(error) && error.config?.url === LOGIN_PATH;

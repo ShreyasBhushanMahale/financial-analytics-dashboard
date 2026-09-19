@@ -1,6 +1,14 @@
 import type { RequestHandler } from 'express';
+import { EXPORT_COLUMN_LABELS, EXPORT_COLUMNS } from '../constants/transaction.js';
 import { exportBodySchema } from '../schemas/export.schema.js';
 import { exportFilename, writeTransactionsCsv } from '../services/export.service.js';
+
+/** The whitelist itself, so the client's column picker can never offer a column the API refuses. */
+export const getExportColumns: RequestHandler = (_req, res) => {
+  res.json({
+    columns: EXPORT_COLUMNS.map((key) => ({ key, label: EXPORT_COLUMN_LABELS[key] })),
+  });
+};
 
 function isClientDisconnect(error: unknown): boolean {
   return (

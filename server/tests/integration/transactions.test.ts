@@ -189,3 +189,30 @@ describe('GET /api/transactions/filter-options', () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe('GET /api/transactions/export/columns', () => {
+  it('lists exactly the exportable columns with their CSV header labels, in file order', async () => {
+    const res = await request(app)
+      .get('/api/transactions/export/columns')
+      .set('Authorization', authorization);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      columns: [
+        { key: 'id', label: 'ID' },
+        { key: 'date', label: 'Date (UTC)' },
+        { key: 'amount', label: 'Amount' },
+        { key: 'category', label: 'Category' },
+        { key: 'status', label: 'Status' },
+        { key: 'user_id', label: 'User ID' },
+        { key: 'user_profile', label: 'User Profile' },
+      ],
+    });
+  });
+
+  it('requires a token', async () => {
+    const res = await request(app).get('/api/transactions/export/columns');
+
+    expect(res.status).toBe(401);
+  });
+});

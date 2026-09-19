@@ -318,6 +318,26 @@ Shortened: the seed data gives 12 points, January to December 2024.
 - **`points` is empty when no transaction matches.**
 - **Requires MongoDB 5.0 or later**, for `$dateTrunc`.
 
+### `GET /api/transactions/export/columns`
+
+The export column whitelist, with the header label each column gets in the CSV, in file order. **Auth: JWT.** The export dialog builds its checkbox list from this, so it can never offer a column the export endpoint would reject.
+
+**200 OK**
+
+```json
+{
+  "columns": [
+    { "key": "id", "label": "ID" },
+    { "key": "date", "label": "Date (UTC)" },
+    { "key": "amount", "label": "Amount" },
+    { "key": "category", "label": "Category" },
+    { "key": "status", "label": "Status" },
+    { "key": "user_id", "label": "User ID" },
+    { "key": "user_profile", "label": "User Profile" }
+  ]
+}
+```
+
 ### `POST /api/transactions/export`
 
 Streams the matching transactions as a CSV file. **Auth: JWT.** It is a POST because the column list and filters travel as JSON. The client downloads the response as a blob, because a plain link can't carry the `Authorization` header. Rows go from a database cursor straight into the response, so memory use stays flat however many rows match.

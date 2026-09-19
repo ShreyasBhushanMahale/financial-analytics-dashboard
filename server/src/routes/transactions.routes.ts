@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { postExport } from '../controllers/export.controller.js';
+import { getExportColumns, postExport } from '../controllers/export.controller.js';
 import {
   getTransactionFilterOptions,
   getTransactions,
@@ -14,3 +14,4 @@ transactionsRouter.get('/filter-options', getTransactionFilterOptions);
 // POST, not GET: the column list and filters travel in a JSON body, and the client downloads the
 // response as a blob because a plain link can't carry the Authorization header.
 transactionsRouter.post('/export', postExport);
+transactionsRouter.get('/export/columns', getExportColumns);

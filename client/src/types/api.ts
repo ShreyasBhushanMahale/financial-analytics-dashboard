@@ -44,6 +44,15 @@ export interface Transaction {
   user_profile: string;
 }
 
+/** The server's export whitelist is exactly the transaction's own fields. */
+export type ExportColumnKey = keyof Transaction;
+
+export interface ExportColumn {
+  key: ExportColumnKey;
+  /** The CSV header text for this column. */
+  label: string;
+}
+
 export interface TransactionPage {
   data: Transaction[];
   meta: { page: number; pageSize: number; total: number; totalPages: number };
