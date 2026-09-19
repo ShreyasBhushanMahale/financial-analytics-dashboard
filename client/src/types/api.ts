@@ -27,7 +27,9 @@ export type Category = (typeof CATEGORIES)[number];
 export const STATUSES = ['Paid', 'Pending'] as const;
 export type Status = (typeof STATUSES)[number];
 
-export type SortField = 'id' | 'date' | 'amount' | 'category' | 'status' | 'user_id';
+/** Mirrors the server's sort whitelist. */
+export const SORT_FIELDS = ['id', 'date', 'amount', 'category', 'status', 'user_id'] as const;
+export type SortField = (typeof SORT_FIELDS)[number];
 export type SortOrder = 'asc' | 'desc';
 
 export interface Transaction {
@@ -45,6 +47,15 @@ export interface Transaction {
 export interface TransactionPage {
   data: Transaction[];
   meta: { page: number; pageSize: number; total: number; totalPages: number };
+}
+
+export interface FilterOptions {
+  categories: Category[];
+  statuses: Status[];
+  userIds: string[];
+  /** null only when there are no transactions at all. */
+  dateRange: { min: string; max: string } | null;
+  amountRange: { min: number; max: number } | null;
 }
 
 export interface Summary {

@@ -4,8 +4,9 @@ import { FilterNotice } from '../components/dashboard/FilterNotice';
 import { KpiCards } from '../components/dashboard/KpiCards';
 import { OverviewPanel } from '../components/dashboard/OverviewPanel';
 import { RecentTransactionsPanel } from '../components/dashboard/RecentTransactionsPanel';
+import { TransactionsPanel } from '../components/transactions/TransactionsPanel';
 
-// Every block reads the same URL filters; the transactions table joins them in the next phase.
+// Every block reads the same URL filters, so the cards, charts and table always agree.
 export function DashboardPage() {
   return (
     <Stack spacing={{ xs: 2, md: 3 }}>
@@ -22,6 +23,7 @@ export function DashboardPage() {
         <RecentTransactionsPanel />
       </Box>
       <BreakdownPanels />
+      <TransactionsPanel />
     </Stack>
   );
 }

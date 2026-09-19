@@ -16,7 +16,7 @@ This is a hiring assignment. The brief is in `docs/assignment.pdf`, the build pl
 | 6. CSV export API                                                   | Done    |
 | 7. Frontend foundation: theme, login, app shell, error chips        | Done    |
 | 8. Dashboard: cards, overview chart, breakdown, latest transactions | Done    |
-| 9. Transactions table, filters and search                           | Pending |
+| 9. Transactions table, filters and search                           | Done    |
 | 10. CSV export modal                                                | Pending |
 | 11. Final pass                                                      | Pending |
 
@@ -232,11 +232,11 @@ client/
     api/             axios instance (token + 401 interceptors), error normalising, React Query client
     auth/            session storage
     providers/       Alert, Query and Auth providers (+ their contexts)
-    hooks/           useTransactionFilters (URL state), data hooks (useSummary, useMonthlyTrend, useRecentTransactions), useAuth, useAlerts
+    hooks/           URL state (useTransactionFilters, useTableParams), data hooks (useSummary, useMonthlyTrend, useTransactions, useFilterOptions), inputs (useDebouncedInput, useSlashToFocus), useAuth, useAlerts
     layout/          AppLayout, Sidebar, TopBar, UserMenu, ProtectedRoute
     pages/           Login, Dashboard, Transactions, NotFound
     config/          locale and currency (the one place they are set)
-    components/      common/ (states, pills, cards), charts/, dashboard/, auth/
+    components/      common/ (states, pills, chips, cards), charts/, dashboard/, transactions/, auth/
     theme/           design tokens and the MUI theme
     test/            test setup and the client tests
   vite.config.ts     proxies /api to the server in development
@@ -261,7 +261,7 @@ Signing in takes you to the dashboard. Every other page requires a session; with
 - **Avatars** are initials on a tinted square, with the colour derived from the name. The data's `user_profile` URL is never loaded: that site returns a different random face on every request.
 - **Sidebar:** Dashboard and Transactions are live. The design's other items (Wallet, Analytics, Personal, Message, Setting) are shown disabled with a "Coming soon" tooltip rather than as empty pages. Below the `md` breakpoint the sidebar shrinks to icons only.
 - **Filters live in the URL.** `useTransactionFilters()` reads and writes them in the query string, using the same parameter names as the API. The address bar and the API request are therefore always the same filter.
-  - The cards, the overview chart, the breakdowns and (from Phase 9) the table all read from this one hook, so they always describe the same transactions.
+  - The cards, the overview chart, the breakdowns and the table all read from this one hook, so they always describe the same transactions.
   - A filtered view can be bookmarked or shared, and Back undoes a filter change.
   - Try `/?statuses=Pending` or `/?categories=Expense&dateFrom=2024-07-01`.
 - **Dashboard:**
@@ -270,6 +270,15 @@ Signing in takes you to the dashboard. Every other page requires a session; with
   - **Breakdowns:** by category (a donut with each side's share) and by status (paid and pending, each split into revenue and expenses).
   - **Latest transactions:** the 5 most recent overall. It is labelled as unaffected by filters, because it's a feed.
   - **Filtered notice:** when a filter is active, a notice above the cards says so, with how many transactions match and a Clear button.
+- **Transactions table** (on the dashboard, and full-page at `/transactions`):
+  - **Server-side:** paging (10, 25 or 50 rows), sorting on every column (the active column shows its direction) and filtering.
+  - **Columns:** ID, User (initials avatar), Date (hover for the exact UTC time), Category, a signed Amount (green in, yellow out) and a Status pill.
+  - **Search** waits 300 ms after the last keystroke. `/` focuses it, Escape clears it, and text you're still typing is never overwritten by the round trip.
+  - **Date range** is a popover with native date inputs and presets built from the years in the data (a year and its quarters). There is no date library.
+  - **The Filters popover** has amount min/max (checked before sending, so min > max never reaches the API) and multi-selects for category, status and user, fed by `/api/transactions/filter-options`.
+  - **Chips:** every applied filter shows as a removable chip, one per value, with Clear all.
+  - **Paging:** changing any filter, the sort or the page size goes back to page 1. Page, size and sort also live in the URL, so a shared link opens on the same page.
+  - **States:** while the next page loads, the current one stays visible, dimmed. The first load shows skeleton rows. There are empty states for "nothing matches" (with Clear filters) and for a page past the end.
 - **Money and dates** are formatted with `Intl`, from one config file ([client/src/config/locale.ts](client/src/config/locale.ts): `en-US`, `USD`). Dates are shown in UTC, matching how the server filters and groups them.
 - **Loading, empty and error states:** every block has all three.
   - First load: skeletons shaped like the content.

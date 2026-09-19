@@ -1,4 +1,4 @@
-import type { SortField, SortOrder, TransactionPage } from '../types/api';
+import type { FilterOptions, SortField, SortOrder, TransactionPage } from '../types/api';
 import { filtersToParams, type TransactionFilters } from '../utils/filterParams';
 import { http } from './http';
 
@@ -18,5 +18,10 @@ export async function fetchTransactions(query: TransactionListQuery): Promise<Tr
   params.set('sortOrder', query.sortOrder);
 
   const { data } = await http.get<TransactionPage>('/transactions', { params });
+  return data;
+}
+
+export async function fetchFilterOptions(): Promise<FilterOptions> {
+  const { data } = await http.get<FilterOptions>('/transactions/filter-options');
   return data;
 }
