@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
-import { apiRouter } from './routes/index.js';
+import { createApiRouter } from './routes/index.js';
 
 export function createApp(): Express {
   const app = express();
@@ -20,7 +20,7 @@ export function createApp(): Express {
   );
   app.use(express.json({ limit: '100kb' }));
 
-  app.use('/api', apiRouter);
+  app.use('/api', createApiRouter());
 
   app.use(notFound);
   app.use(errorHandler);

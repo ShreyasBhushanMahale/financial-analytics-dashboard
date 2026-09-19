@@ -2,6 +2,7 @@ import type { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 import { AppError, type ErrorBody } from '../errors/AppError.js';
 import { logger } from '../utils/logger.js';
+import { describeIssues } from '../utils/zodIssues.js';
 
 // body-parser tags its errors with a `type` string; that is the stable way to recognise them.
 function bodyParserErrorType(err: unknown): string | undefined {
@@ -15,11 +16,7 @@ function toAppError(err: unknown): AppError {
   if (err instanceof AppError) return err;
 
   if (err instanceof ZodError) {
-    const details = err.issues.map((issue) => ({
-      path: issue.path.map(String).join('.'),
-      message: issue.message,
-    }));
-    return new AppError(400, 'VALIDATION_ERROR', 'Request validation failed', details);
+    return new AppError(400, 'VALIDATION_ERROR', 'Request validation failed', describeIssues(err));
   }
 
   switch (bodyParserErrorType(err)) {

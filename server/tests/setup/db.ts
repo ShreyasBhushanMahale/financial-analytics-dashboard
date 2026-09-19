@@ -17,3 +17,8 @@ export async function connectTestDb(): Promise<void> {
     );
   }
 }
+
+/** Drops the whole test database, so each integration file starts from nothing. */
+export async function clearTestDb(): Promise<void> {
+  await mongoose.connection.dropDatabase();
+}

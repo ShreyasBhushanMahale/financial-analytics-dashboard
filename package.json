@@ -12,6 +12,7 @@
   },
   "scripts": {
     "dev": "concurrently --names server,client --prefix-colors green,yellow \"npm run dev -w server\" \"npm run dev -w client\"",
+    "seed": "npm run seed -w server --",
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces",
     "typecheck": "npm run typecheck --workspaces",
