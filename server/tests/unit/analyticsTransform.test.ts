@@ -1,6 +1,4 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { parseTransactionRows } from '../../scripts/seed/parseRows.js';
 import type { Category, Status } from '../../src/constants/transaction.js';
 import {
   toMonthlyTrend,
@@ -8,6 +6,7 @@ import {
   type MonthBucket,
   type SummaryBucket,
 } from '../../src/services/analytics.transform.js';
+import { loadSampleTransactions } from '../setup/fixtures.js';
 
 const bucket = (category: Category, status: Status, total: number, count: number) => ({
   _id: { category, status },
@@ -82,9 +81,7 @@ describe('toSummary', () => {
   });
 
   it('reproduces the known totals of the real data file', () => {
-    const rows = parseTransactionRows(
-      JSON.parse(readFileSync(new URL('../../data/transactions.json', import.meta.url), 'utf8')),
-    );
+    const rows = loadSampleTransactions();
     // Build the buckets the pipeline would return, in plain JavaScript.
     const buckets = new Map<string, SummaryBucket>();
     for (const row of rows) {

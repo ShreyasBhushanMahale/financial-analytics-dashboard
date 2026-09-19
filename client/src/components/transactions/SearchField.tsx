@@ -30,9 +30,10 @@ export function SearchField({ value, onCommit }: SearchFieldProps) {
         if (event.key === 'Escape') commitNow('');
         if (event.key === 'Enter') commitNow(draft);
       }}
-      placeholder="Search for anything…"
+      // Says exactly what matches: dates aren't searchable, and numbers match whole values only.
+      placeholder="Search user, category, status or exact ID/amount"
       inputRef={inputRef}
-      sx={{ width: { xs: '100%', sm: 300 } }}
+      sx={{ width: { xs: '100%', sm: 400 }, '& input::placeholder': { fontSize: 14 } }}
       slotProps={{
         htmlInput: { 'aria-label': 'Search transactions by user, category, status, ID or amount' },
         input: {

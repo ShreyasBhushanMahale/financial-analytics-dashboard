@@ -1,21 +1,16 @@
-import { readFileSync } from 'node:fs';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { parseTransactionRows } from '../../scripts/seed/parseRows.js';
-import { upsertTransactions } from '../../scripts/seed/seedTransactions.js';
 import { createApp } from '../../src/app.js';
 import { disconnectDb } from '../../src/db/connect.js';
 import type { ErrorBody } from '../../src/errors/AppError.js';
 import type { Transaction } from '../../src/models/transaction.model.js';
-import { UserModel } from '../../src/models/user.model.js';
-import { signAccessToken } from '../../src/services/token.service.js';
 import type { TransactionPage } from '../../src/services/transaction.service.js';
 import { clearTestDb, connectTestDb } from '../setup/db.js';
+import { loadSampleTransactions, seedSampleData } from '../setup/fixtures.js';
 
 const app = createApp();
-const rows = parseTransactionRows(
-  JSON.parse(readFileSync(new URL('../../data/transactions.json', import.meta.url), 'utf8')),
-);
+// The same rows the database holds, used as a plain-JavaScript answer key for each filter.
+const rows = loadSampleTransactions();
 let authorization: string;
 
 const list = (query: Record<string, string> = {}) =>
@@ -27,13 +22,7 @@ const contains = (value: string, term: string) => value.toLowerCase().includes(t
 beforeAll(async () => {
   await connectTestDb();
   await clearTestDb();
-  await upsertTransactions(rows);
-  const user = await UserModel.create({
-    email: 'analyst@example.com',
-    name: 'Analyst',
-    passwordHash: 'not-used-in-these-tests',
-  });
-  authorization = `Bearer ${signAccessToken(user._id.toString()).token}`;
+  ({ authorization } = await seedSampleData());
 });
 
 afterAll(async () => {

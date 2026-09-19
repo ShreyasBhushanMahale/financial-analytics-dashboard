@@ -1,5 +1,6 @@
 // The session lives in localStorage so it survives a reload. The trade-off is that any script
-// running on the page could read the token; the server's CSP and the 8-hour expiry limit that.
+// running on the page could read the token. The production build's Content Security Policy (see
+// vite.config.ts) stops injected and third-party scripts, and the 8-hour expiry limits the damage.
 
 const STORAGE_KEY = 'ledgerline.session';
 

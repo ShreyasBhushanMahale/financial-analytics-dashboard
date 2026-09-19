@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseTransactionRows } from '../../scripts/seed/parseRows.js';
+import { readSampleFile } from '../setup/fixtures.js';
 
 const validRow = {
   id: 1,
@@ -14,11 +14,7 @@ const validRow = {
 
 describe('parseTransactionRows', () => {
   it('accepts the real data file and converts dates to Date objects', () => {
-    const raw: unknown = JSON.parse(
-      readFileSync(new URL('../../data/transactions.json', import.meta.url), 'utf8'),
-    );
-
-    const rows = parseTransactionRows(raw);
+    const rows = parseTransactionRows(readSampleFile());
 
     expect(rows).toHaveLength(300);
     expect(rows[0]?.date).toEqual(new Date('2024-01-15T08:34:12Z'));

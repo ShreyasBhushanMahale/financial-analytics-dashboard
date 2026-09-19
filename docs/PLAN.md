@@ -1,22 +1,28 @@
-# Build Plan: Financial Analytics Dashboard
+# Build plan (historical)
 
-Approved 2026-09-18. Project rules live in `CLAUDE.md`. This file covers what we build and in what order.
+This is the plan written before implementation, kept as a record of how the work was approached and in what order. It is not maintained. Where it and the code disagree, the code, the [README](../README.md) and [API.md](API.md) are authoritative.
 
-## Timeline and working rules
+## Where the finished app differs from this plan
 
-- **Deadline: 2026-09-19, 11:59 PM.** Phases 1–2 were done on 2026-09-18; phases 3–11 are done on 2026-09-19.
-- If a nice-to-have competes with finishing a phase, finish the phase.
-- **From Phase 4 on (decided 2026-09-19), phases are built directly from this plan, without a separate plan-and-approve step.** Work stops mid-phase only for a decision that changes the design. After each phase: lint, typecheck and tests pass, `README.md` and `docs/API.md` are updated, a short summary is given, and work stops so the phase can be committed.
-- **Scope cuts (2026-09-19)**, already applied to the sections below:
-  - Trend chart is monthly only (no weekly interval).
-  - Analytics breakdown covers category and status only (no per-user bars).
-  - Export modal: checkbox column list, select all/none, scope toggle with row counts, 3-row preview and the download. No reordering, no presets.
-  - No mobile drawer and no sticky first column: the table scrolls horizontally.
-  - Phases 5 and 6 get unit tests only. `buildTransactionQuery()` keeps full unit coverage.
-  - All stretch items are dropped.
-- Fallbacks are decided in advance, so no time goes into debugging tooling:
-  - **mongodb-memory-server**: if it isn't working within about 10 minutes (binary download, Windows issues), drop it. Integration tests then run against a `finance_dashboard_test` database on Atlas through `MONGODB_TEST_URI`.
-  - **Express 5**: if it causes any middleware trouble, switch to Express 4 immediately and add an async error wrapper.
+- **Folder layout:**
+  - The seed is a small folder, `server/scripts/seed/`.
+  - The enums and whitelists live in `constants/transaction.ts`.
+  - Request validation happens at the top of each controller with `schema.parse()`, instead of a separate `validate` middleware.
+- **Analytics summary** uses a single `$group` by category and status, instead of `$facet`. The response shape is unchanged.
+- **The filtered dashboard** shows one notice above the cards, instead of a badge on each card. Recent transactions are labelled "Latest transactions · 5 most recent overall · not affected by filters".
+- **Export:**
+  - The column list comes from a dedicated endpoint, `GET /api/transactions/export/columns`.
+  - The dialog remembers the last column selection.
+  - The CSV date header reads "Date (UTC)".
+- **Security:** the Content Security Policy is set on the production client build, not by helmet (helmet's CSP only covers API responses). The server refuses to start with the placeholder `JWT_SECRET`.
+- **Testing:** analytics and export have unit tests plus end-to-end tests over HTTP.
+
+## Scope decisions
+
+- The trend chart is monthly only (no weekly interval).
+- The breakdown covers category and status only (no per-user chart).
+- The export dialog has a checkbox column list, Select all/None, a scope choice with row counts, a 3-row preview and the download. There is no column reordering and there are no presets.
+- There is no mobile drawer and no sticky first column: the table scrolls horizontally on narrow screens.
 
 ## 1. Folder structure
 
@@ -201,7 +207,7 @@ Status pills use the accent colour at about 30% opacity, which matches the sampl
 
 ## 6. Build order
 
-Each phase ends with lint, typecheck and tests passing and README.md and docs/API.md updated. Then work stops for review.
+Each phase ended with lint, typecheck and tests passing, and the README and API docs updated.
 
 | #   | Phase               | Delivers                                                                                                                                                                                                                           | Done when                                                                                                                                    |
 | --- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |

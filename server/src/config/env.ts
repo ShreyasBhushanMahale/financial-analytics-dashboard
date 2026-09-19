@@ -2,7 +2,11 @@ import { z } from 'zod';
 import { DURATION_PATTERN } from '../utils/duration.js';
 import { parseEnv } from './parseEnv.js';
 
-const envSchema = z.object({
+// Every placeholder in .env.example starts like this. The example file is public, so a secret
+// copied from it unchanged would let anyone sign valid tokens.
+const EXAMPLE_PLACEHOLDER_PREFIX = 'replace-with';
+
+export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
   CLIENT_ORIGIN: z.url().default('http://localhost:5173'),
@@ -10,7 +14,13 @@ const envSchema = z.object({
     .string()
     .regex(/^mongodb(\+srv)?:\/\//, 'must start with mongodb:// or mongodb+srv://'),
   // HS256 is only as strong as its secret; 32+ characters keeps brute-forcing the signature out of reach.
-  JWT_SECRET: z.string().min(32, 'must be at least 32 characters'),
+  JWT_SECRET: z
+    .string()
+    .min(32, 'must be at least 32 characters')
+    .refine(
+      (secret) => !secret.startsWith(EXAMPLE_PLACEHOLDER_PREFIX),
+      "is still the placeholder from .env.example; generate one with: node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\"",
+    ),
   JWT_EXPIRES_IN: z
     .string()
     .regex(DURATION_PATTERN, 'must be a whole number followed by s, m, h or d, like 8h')

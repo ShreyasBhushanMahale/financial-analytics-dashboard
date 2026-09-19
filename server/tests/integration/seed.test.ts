@@ -1,7 +1,5 @@
-import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { syncAllIndexes } from '../../scripts/seed/indexes.js';
-import { parseTransactionRows } from '../../scripts/seed/parseRows.js';
 import { upsertDemoUser } from '../../scripts/seed/seedDemoUser.js';
 import { deleteAllTransactions, upsertTransactions } from '../../scripts/seed/seedTransactions.js';
 import { findMismatches, summarizeTransactions } from '../../scripts/seed/summary.js';
@@ -10,10 +8,9 @@ import { TransactionModel } from '../../src/models/transaction.model.js';
 import { UserModel } from '../../src/models/user.model.js';
 import { verifyPassword } from '../../src/utils/password.js';
 import { clearTestDb, connectTestDb } from '../setup/db.js';
+import { loadSampleTransactions } from '../setup/fixtures.js';
 
-const rows = parseTransactionRows(
-  JSON.parse(readFileSync(new URL('../../data/transactions.json', import.meta.url), 'utf8')),
-);
+const rows = loadSampleTransactions();
 const demoUser = { email: 'Analyst@Example.com', password: 'correct-horse', name: 'Demo Analyst' };
 
 // Mongoose types listIndexes() as any[]; this is the part of each index record the tests read.

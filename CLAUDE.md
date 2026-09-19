@@ -6,7 +6,7 @@ A full-stack hiring assignment.
 Graded on **code quality**, **problem-solving approach**, and **creativity**.
 Partial submissions are accepted, so core features must be finished and solid before any extras.
 
-- Brief: `docs/assignment.pdf`
+- Brief: `docs/assignment.pdf` (kept locally, gitignored; its requirements are summarised in the README)
 - Build plan: `docs/PLAN.md` (created in Phase 0)
 - Design references: `design/*.png` (screenshots of the Figma file)
 - Seed data: `server/data/transactions.json`
