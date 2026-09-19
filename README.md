@@ -12,15 +12,15 @@ This is a hiring assignment. The brief is in `docs/assignment.pdf`, the build pl
 | 2. Models, indexes and seed script                                     | Done    |
 | 3. Auth (JWT)                                                          | Done    |
 | 4. Transactions API (filter, search, sort, paginate)                   | Done    |
-| 5. Analytics API                                                       | Pending |
-| 6. CSV export API                                                      | Pending |
+| 5. Analytics API                                                       | Done    |
+| 6. CSV export API                                                      | Done    |
 | 7–10. Frontend: foundation, dashboard, table and filters, export modal | Pending |
 | 11. Final pass                                                         | Pending |
 
 ## Tech stack
 
 - **client/**: React 19, TypeScript, Vite. MUI, Recharts, TanStack Query, React Router and axios arrive in Phase 7.
-- **server/**: Node, Express 5, TypeScript, Mongoose, zod, jsonwebtoken, bcryptjs, express-rate-limit, helmet, cors.
+- **server/**: Node, Express 5, TypeScript, Mongoose, zod, jsonwebtoken, bcryptjs, express-rate-limit, csv-stringify, helmet, cors.
 - **Database**: MongoDB 5.0 or later (Atlas free tier or local).
 - **Tests**: Vitest and Supertest, against an in-memory MongoDB.
 
@@ -102,11 +102,33 @@ Log in with the demo user from `server/.env`: `POST /api/auth/login` returns a t
 
 `GET /api/transactions` does all filtering, searching, sorting and paging in MongoDB. The browser never downloads rows just to filter them. The parameters are documented in [docs/API.md](docs/API.md#filters). The design choices behind them:
 
-- **One query builder.** `buildTransactionQuery()` in [server/src/queries/](server/src/queries/buildTransactionQuery.ts) is a pure function from validated filters to a Mongo query. The list endpoint uses it now, and the analytics and export endpoints will too, so a filter can't mean one thing in the table and another in a chart or a CSV. It has full unit-test coverage.
+- **One query builder.** `buildTransactionQuery()` in [server/src/queries/](server/src/queries/buildTransactionQuery.ts) is a pure function from validated filters to a Mongo query. The list, analytics and export endpoints all use it, so a filter can't mean one thing in the table and another in a chart or a CSV. It has full unit-test coverage.
 - **One filter schema** validates both query strings (`statuses=Paid,Pending`) and JSON bodies (`["Paid", "Pending"]`). It rejects unknown parameters, so a typo like `statuss=Paid` is a 400, not silently unfiltered data. It also rejects backwards ranges (`dateFrom` after `dateTo`).
 - **Dates are UTC days, inclusive.** `dateTo=2024-03-31` includes the whole of 31 March, because the bound is "before 1 April 00:00 UTC".
 - **Search** is a case-insensitive "contains" match on user, category and status. A number also matches an exact id or amount (`1,500.50` works). Input is regex-escaped, so `.*` matches the literal text rather than every row, and a pattern can't be crafted to run slowly.
 - **Sorting** is limited to a whitelist of fields. Ties are broken by `id`, so paging through a sort with many equal values never repeats or skips a row.
+
+## Analytics
+
+`GET /api/analytics/summary` and `GET /api/analytics/trend` take the same filters as the table. Everything on the dashboard therefore describes the same set of transactions.
+
+- **Summary** is a single `$group` by category and status, which yields at most four buckets. The totals, the category split and the status split are all derived from those buckets in [analytics.transform.ts](server/src/services/analytics.transform.ts), a pure function. Amounts are rounded to cents once, after summing, so floating-point noise never reaches the client.
+- **Trend** groups by UTC calendar month (`$dateTrunc`, which needs MongoDB 5.0 or later). Months with no transactions are filled with zeros, so the chart's x-axis has no gaps. The range follows `dateFrom` and `dateTo` when they're set.
+- Both always return every category and status, with zeros when nothing matches. The client never has to handle a missing key.
+
+## CSV export
+
+`POST /api/transactions/export` with `{ columns, filters, sort }` streams a CSV of every matching row, not just the current page. It is a POST because the column list and filters are JSON, and because the client downloads the result as a blob: a plain link couldn't carry the `Authorization` header.
+
+- **Streaming:** rows flow from a MongoDB cursor through csv-stringify into the response. Memory stays flat however many rows match. If the download is cancelled, `pipeline()` tears everything down, including the database cursor.
+- **Whitelisted columns:** only the seven transaction fields can be exported, in the order the client chooses. Anything else (`_id`, `passwordHash`) is a 400.
+- **Spreadsheet-safe:**
+  - The header row uses readable labels.
+  - Dates are ISO 8601 in UTC.
+  - Amounts have 2 decimals and no currency symbol, so they stay numeric.
+  - Text starting with `=`, `+`, `-` or `@` is prefixed with an apostrophe, so a spreadsheet can't run it as a formula.
+- **Validation happens before streaming starts,** so a bad request gets a normal JSON error, never half a file.
+- **The filename** names the date range it covers, for example `transactions_2024-01-01_to_2024-03-31.csv`, and is sent in `Content-Disposition`.
 
 ## Seeding
 
@@ -192,12 +214,13 @@ server/
     constants/       shared enums (categories, statuses)
     models/          Mongoose schemas and indexes
     routes/ → controllers/ → services/   HTTP layer → request handling → business logic
+                     (services/*.transform.ts and csvFormat.ts are the pure, unit-tested parts)
     schemas/         zod request schemas (login, transaction filters and paging)
-    queries/         buildTransactionQuery() and buildTransactionSort(): pure, shared by every data endpoint
+    queries/         buildTransactionQuery(), buildTransactionSort(), analytics pipelines: pure, shared by every data endpoint
     middleware/      requireAuth, login rate limit, central error handler, 404 handler
     types/           Express Request augmentation (req.user)
     errors/          AppError: the one error type that reaches clients
-    utils/           logger, password hashing, durations, UTC days, regex escaping, money rounding, zod issue formatting
+    utils/           logger, password hashing, durations, UTC days and months, regex escaping, money rounding, zod issue formatting
   tests/
     setup/           in-memory MongoDB, "_test" database guard
     unit/  integration/

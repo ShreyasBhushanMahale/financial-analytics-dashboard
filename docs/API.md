@@ -179,7 +179,7 @@ curl http://localhost:4000/api/auth/me -H "Authorization: Bearer <token>"
 
 ### Filters
 
-The list endpoint below takes these parameters. The analytics and export endpoints use the same set, validated by the same schema and turned into a database query by the same function (`buildTransactionQuery()`). A filter therefore means exactly the same thing in the table, the charts and a CSV. All filters are optional and combine with AND.
+The list and analytics endpoints take these as query parameters, and the export endpoint takes them as a JSON object. All three use the same set, validated by the same schema and turned into a database query by the same function (`buildTransactionQuery()`). A filter therefore means exactly the same thing in the table, the charts and a CSV. All filters are optional and combine with AND.
 
 | Parameter    | Format                               | Matches                                                                                                                                                                             |
 | ------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -257,4 +257,113 @@ Everything the filter UI needs to offer valid choices. **Auth: JWT.** Categories
   "dateRange": { "min": "2024-01-02T14:17:03.000Z", "max": "2024-12-23T17:05:03.000Z" },
   "amountRange": { "min": 150, "max": 5000 }
 }
+```
+
+### `GET /api/analytics/summary`
+
+The totals behind the dashboard cards and the breakdown charts, for the transactions matching the [filters](#filters). **Auth: JWT.** It takes the filter parameters only (no paging or sorting), and unknown parameters are rejected. It runs a single aggregation: one `$group` by category and status. Every figure is derived from those (at most four) buckets and rounded to cents.
+
+**200 OK**: unfiltered, on the seed data.
+
+```json
+{
+  "totals": {
+    "revenue": 339803.25,
+    "expense": 206605,
+    "net": 133198.25,
+    "pending": 205303,
+    "pendingCount": 114,
+    "count": 300
+  },
+  "byCategory": [
+    { "key": "Revenue", "total": 339803.25, "count": 150 },
+    { "key": "Expense", "total": 206605, "count": 150 }
+  ],
+  "byStatus": [
+    { "key": "Paid", "revenue": 195302, "expense": 145803.25, "count": 186 },
+    { "key": "Pending", "revenue": 144501.25, "expense": 60801.75, "count": 114 }
+  ]
+}
+```
+
+- **`net`** is revenue minus expense: the Balance card.
+- **`pending`** is the pending amount across both categories.
+- **Both categories and both statuses are always present**, with zeros when nothing matches.
+
+```bash
+curl -G http://localhost:4000/api/analytics/summary -H "Authorization: Bearer <token>" -d userIds=user_001
+```
+
+### `GET /api/analytics/trend`
+
+Revenue and expense per UTC calendar month, for the Overview chart. **Auth: JWT.** It takes the filter parameters only.
+
+**200 OK**
+
+```json
+{
+  "points": [
+    { "period": "2024-01-01T00:00:00.000Z", "revenue": 53100, "expense": 2150 },
+    { "period": "2024-02-01T00:00:00.000Z", "revenue": 4300, "expense": 35901 },
+    …
+    { "period": "2024-12-01T00:00:00.000Z", "revenue": 2600, "expense": 28850.5 }
+  ]
+}
+```
+
+Shortened: the seed data gives 12 points, January to December 2024.
+
+- **`period`** is the first instant of the month, in UTC.
+- **Months without transactions appear with zeros**, so the chart's x-axis is continuous. The range runs from `dateFrom` (or the first month with data) to `dateTo` (or the last month with data).
+- **`points` is empty when no transaction matches.**
+- **Requires MongoDB 5.0 or later**, for `$dateTrunc`.
+
+### `POST /api/transactions/export`
+
+Streams the matching transactions as a CSV file. **Auth: JWT.** It is a POST because the column list and filters travel as JSON. The client downloads the response as a blob, because a plain link can't carry the `Authorization` header. Rows go from a database cursor straight into the response, so memory use stays flat however many rows match.
+
+**Request body**
+
+| Field     | Type                                                | Rules                                                                                                                      |
+| --------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `columns` | array, required                                     | 1 or more of `id`, `date`, `amount`, `category`, `status`, `user_id`, `user_profile`, no repeats. The file uses this order |
+| `filters` | object, default `{}`                                | The same [filters](#filters) as the table, with lists as arrays. `{}` exports every transaction                            |
+| `sort`    | object, default `{ "by": "date", "order": "desc" }` | `by`: a sortable field (see the list endpoint). `order`: `asc` or `desc`                                                   |
+
+```json
+{
+  "columns": ["id", "date", "amount", "status", "user_id"],
+  "filters": { "dateFrom": "2024-03-01", "dateTo": "2024-03-31", "categories": ["Expense"] },
+  "sort": { "by": "amount", "order": "desc" }
+}
+```
+
+**200 OK** returns the CSV itself, with these headers:
+
+```
+Content-Type: text/csv; charset=utf-8
+Content-Disposition: attachment; filename="transactions_2024-03-01_to_2024-03-31.csv"
+Cache-Control: no-store
+```
+
+```csv
+ID,Date (UTC),Amount,Status,User ID
+92,2024-03-15T11:22:49.000Z,3500.00,Paid,user_003
+80,2024-03-06T18:32:45.000Z,3200.00,Paid,user_003
+```
+
+- **The header row** uses readable labels. It is written even when no rows match.
+- **Dates** are ISO 8601 in UTC.
+- **Amounts** have 2 decimals and no currency symbol, so spreadsheets read them as numbers.
+- **Quoting:** values with commas, quotes or line breaks are quoted.
+- **Formula protection:** a text value starting with `=`, `+`, `-`, `@`, tab or carriage return gets a leading apostrophe, so a spreadsheet shows it as text instead of running it as a formula.
+- **The filename** names the date range (`transactions_2024-01-01_to_2024-03-31.csv`, `transactions_from_2024-07-01.csv`, `transactions_until_2024-06-30.csv`). With no range it uses the UTC time of export (`transactions_2026-09-19_1432.csv`).
+
+**Errors**: the body is validated before any CSV is sent, so errors are normal JSON.
+
+- **400 `VALIDATION_ERROR`:** no columns, a column outside the whitelist (such as `_id`), a repeated column, an invalid or unknown filter, or an unknown field.
+- **401 `UNAUTHORIZED` / `TOKEN_EXPIRED`:** see [Conventions](#conventions).
+
+```bash
+curl -X POST http://localhost:4000/api/transactions/export   -H "Authorization: Bearer <token>" -H "Content-Type: application/json"   -d '{"columns":["id","date","amount","status"],"filters":{"statuses":["Pending"]}}'   -OJ   # save under the server's filename
 ```
